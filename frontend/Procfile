@@ -1,1 +1,1 @@
-web: python -m http.server $PORT --bind 0.0.0.0
+web: echo "API_BASE=$API_BASE" > .env && python -m http.server $PORT --bind 0.0.0.0
