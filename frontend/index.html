@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlotWise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">📅</span>SlotWise</div>
+  <div id="user-info" class="user-info hidden">
+    <div class="notif-wrap">
+      <button id="notif-bell-btn" class="btn btn-ghost" title="Notifications">
+        🔔<span id="notif-badge" class="notif-badge hidden">0</span>
+      </button>
+      <div id="notif-panel" class="notif-panel hidden">
+        <div class="card-header">
+          <strong>Notifications</strong>
+          <button id="notif-mark-all-btn" class="btn btn-ghost btn-sm">Mark all read</button>
+        </div>
+        <div id="notif-list" class="list"></div>
+      </div>
+    </div>
+    <span id="user-name"></span>
+    <button id="logout-btn" class="btn btn-ghost">Log out</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Auth -->
+  <section id="auth-section" class="card auth-card">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login-form">Log in</button>
+      <button class="tab-btn" data-tab="register-form">Register</button>
+    </div>
+
+    <form id="login-form" class="tab-panel active">
+      <label>Email <input type="email" id="login-email" required></label>
+      <label>Password <input type="password" id="login-password" required></label>
+      <button type="submit" class="btn btn-primary">Log in</button>
+      <p class="form-error" id="login-error"></p>
+    </form>
+
+    <form id="register-form" class="tab-panel">
+      <label>Full name <input type="text" id="register-name" required></label>
+      <label>Email <input type="email" id="register-email" required></label>
+      <label>Password <input type="password" id="register-password" minlength="8" required></label>
+      <label>Phone <input type="text" id="register-phone"></label>
+      <label>I am a
+        <select id="register-role">
+          <option value="customer">Customer booking appointments</option>
+          <option value="business_owner">Business owner</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary">Create account</button>
+      <p class="form-error" id="register-error"></p>
+    </form>
+  </section>
+
+  <!-- App -->
+  <section id="app-section" class="hidden">
+    <nav class="app-tabs">
+      <button class="app-tab-btn active" data-view="assistant-view" id="assistant-tab-btn">Book with Assistant</button>
+      <button class="app-tab-btn" data-view="browse-view">Browse Businesses</button>
+      <button class="app-tab-btn" data-view="appointments-view" id="appointments-tab-btn">My Appointments</button>
+      <button class="app-tab-btn hidden" data-view="owner-view" id="owner-tab-btn">My Business</button>
+      <button class="app-tab-btn hidden" data-view="admin-view" id="admin-tab-btn">Admin</button>
+    </nav>
+
+    <!-- Assistant / chat booking -->
+    <div id="assistant-view" class="view active">
+      <div class="card picker-card">
+        <h3>Quick booking</h3>
+        <div class="picker-row">
+          <label>Business
+            <select id="picker-business"><option value="">Choose a business...</option></select>
+          </label>
+          <label>Service
+            <select id="picker-service" disabled><option value="">Choose a business first...</option></select>
+          </label>
+        </div>
+        <div class="picker-row">
+          <span class="picker-group-label">When</span>
+          <div class="chip-group" id="picker-day-chips">
+            <button type="button" class="chip" data-value="today">Today</button>
+            <button type="button" class="chip" data-value="this week">This week</button>
+            <button type="button" class="chip" data-value="this weekend">This weekend</button>
+            <button type="button" class="chip" data-value="next week">Next week</button>
+          </div>
+          <input type="date" id="picker-date" title="Or pick an exact date">
+        </div>
+        <div class="picker-row">
+          <span class="picker-group-label">Time of day</span>
+          <div class="chip-group" id="picker-time-chips">
+            <button type="button" class="chip" data-value="morning">Morning</button>
+            <button type="button" class="chip" data-value="afternoon">Afternoon</button>
+            <button type="button" class="chip" data-value="evening">Evening</button>
+          </div>
+          <div class="picker-time-range">
+            <input type="time" id="picker-time-from" title="From">
+            <span>&ndash;</span>
+            <input type="time" id="picker-time-to" title="To">
+          </div>
+        </div>
+        <button id="picker-submit-btn" class="btn btn-primary btn-sm" disabled>Find appointment</button>
+      </div>
+
+      <div class="card chat-card">
+        <div id="chat-log" class="chat-log">
+          <div class="chat-message assistant">
+            Hi! Use the quick booking panel above, or just tell me what you need — e.g. "I need a haircut sometime next week".
+          </div>
+        </div>
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Describe the appointment you need..." autocomplete="off" required>
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Browse -->
+    <div id="browse-view" class="view">
+      <div class="card">
+        <h2>Businesses</h2>
+        <div id="business-list" class="list"></div>
+      </div>
+      <div class="card">
+        <h2 id="services-heading">Services</h2>
+        <div id="service-list" class="list"></div>
+      </div>
+      <div class="card" id="reviews-card" style="display:none">
+        <h2 id="reviews-heading">Reviews</h2>
+        <div id="review-list" class="list"></div>
+      </div>
+    </div>
+
+    <!-- Appointments -->
+    <div id="appointments-view" class="view">
+      <div class="card">
+        <h2>Calendar</h2>
+        <div id="appointments-calendar"></div>
+      </div>
+      <div class="card">
+        <h2>My Appointments</h2>
+        <div id="appointment-list" class="list"></div>
+      </div>
+    </div>
+
+    <!-- Owner dashboard -->
+    <div id="owner-view" class="view">
+      <div class="card">
+        <div class="card-header">
+          <h2>My Businesses</h2>
+          <button id="owner-new-business-btn" class="btn btn-ghost btn-sm">+ New business</button>
+        </div>
+        <form id="owner-business-form" class="hidden inline-form">
+          <label>Business name <input type="text" id="owner-business-name" required></label>
+          <label>Address <input type="text" id="owner-business-address"></label>
+          <label>Category
+            <select id="owner-business-category"><option value="">None</option></select>
+          </label>
+          <button type="submit" class="btn btn-primary btn-sm">Create</button>
+        </form>
+        <div id="owner-business-list" class="list"></div>
+      </div>
+
+      <div id="owner-detail-panel" class="hidden">
+        <div class="card-header">
+          <h2 id="owner-detail-heading"></h2>
+          <label>Category
+            <select id="owner-detail-category"></select>
+          </label>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Services</h3>
+            <button id="owner-new-service-btn" class="btn btn-ghost btn-sm">+ Add service</button>
+          </div>
+          <form id="owner-service-form" class="hidden inline-form">
+            <label>Name <input type="text" id="owner-service-name" required></label>
+            <label>Duration (minutes) <input type="number" id="owner-service-duration" min="5" max="600" value="30" required></label>
+            <label>Price ($) <input type="number" id="owner-service-price" min="0" step="0.01" value="0" required></label>
+            <button type="submit" class="btn btn-primary btn-sm">Add service</button>
+          </form>
+          <div id="owner-service-list" class="list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Staff</h3>
+            <button id="owner-new-staff-btn" class="btn btn-ghost btn-sm">+ Add staff</button>
+          </div>
+          <form id="owner-staff-form" class="hidden inline-form">
+            <label>Full name <input type="text" id="owner-staff-name" required></label>
+            <button type="submit" class="btn btn-primary btn-sm">Add staff</button>
+          </form>
+          <div id="owner-staff-list" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Working Hours</h3>
+          <form id="owner-hours-form" class="inline-form">
+            <label>Staff
+              <select id="owner-hours-staff-select"></select>
+            </label>
+            <label>Day
+              <select id="owner-hours-day">
+                <option value="0">Sunday</option>
+                <option value="1" selected>Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+            </label>
+            <label>Start <input type="time" id="owner-hours-start" value="09:00" required></label>
+            <label>End <input type="time" id="owner-hours-end" value="17:00" required></label>
+            <button type="submit" class="btn btn-primary btn-sm">Add hours</button>
+          </form>
+          <div id="owner-hours-list" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Calendar</h3>
+          <div id="owner-appointments-calendar"></div>
+        </div>
+
+        <div class="card">
+          <h3>Appointments</h3>
+          <div id="owner-appointment-list" class="list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin dashboard -->
+    <div id="admin-view" class="view">
+      <div class="card">
+        <div class="card-header">
+          <h2>Categories</h2>
+          <button id="admin-new-category-btn" class="btn btn-ghost btn-sm">+ Add category</button>
+        </div>
+        <form id="admin-category-form" class="hidden inline-form">
+          <label>Name <input type="text" id="admin-category-name" required></label>
+          <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        </form>
+        <div id="admin-category-list" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Businesses</h2>
+        <div id="admin-business-list" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Users</h2>
+        <div id="admin-user-list" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
