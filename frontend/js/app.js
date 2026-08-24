@@ -1,4 +1,18 @@
-const API_BASE = window.API_BASE || "http://localhost:8000";
+let API_BASE = "http://localhost:8000"; // overwritten by .env once loadEnvConfig() resolves
+
+async function loadEnvConfig() {
+  try {
+    const res = await fetch(".env", { cache: "no-store" });
+    if (!res.ok) return;
+    const text = await res.text();
+    const match = text.match(/^\s*API_BASE\s*=\s*"?([^"\r\n]*?)"?\s*$/m);
+    if (match && match[1]) API_BASE = match[1];
+  } catch (err) {
+    // .env missing or unreadable — keep the localhost fallback above
+  }
+}
+
+const configReady = loadEnvConfig();
 
 const state = {
   token: localStorage.getItem("slotwise_token") || null,
@@ -9,6 +23,8 @@ const state = {
 // ---------- API helper ----------
 
 async function api(path, { method = "GET", body, form = false, auth = true } = {}) {
+  await configReady;
+
   const headers = {};
   if (auth && state.token) headers["Authorization"] = `Bearer ${state.token}`;
   let payload = body;

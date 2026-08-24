@@ -44,12 +44,19 @@ Plain static files, no build step.
 
 ```
 cd frontend
-copy env.example.js env.js
+copy .env.example .env
 ```
 
-Edit `frontend/env.js` and set `window.API_BASE` to wherever the backend actually lives
+Edit `frontend/.env` and set `API_BASE` to wherever the backend actually lives
 (`http://localhost:8000` for local dev, your real API URL in production). It's gitignored —
-each environment (your machine, a deployed host) keeps its own.
+each environment (your machine, a deployed host) keeps its own. `app.js` fetches this file at
+page load and reads `API_BASE` from it before making any API calls; if the file is missing it
+silently falls back to `http://localhost:8000`.
+
+Note: some static hosts hide dotfiles from directory listings but still serve them on a direct
+request (that's what Python's `http.server` does, and what this relies on) — a few hosts block
+them outright. If `.env` 404s in production, you'll need to either configure the host to allow
+serving it, or fall back to the alternative `env.js` approach documented in git history.
 
 Then serve it with any static server, e.g.:
 
