@@ -1,5 +1,6 @@
 backend/.venv/
 backend/.env
+frontend/env.js
 __pycache__/
 *.pyc
 .DS_Store

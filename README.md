@@ -40,14 +40,24 @@ It starts on `http://localhost:8000`. Interactive API docs: `http://localhost:80
 
 ## 3. Frontend
 
-Plain static files, no build step. From `frontend/`, serve it with any static server, e.g.:
+Plain static files, no build step.
 
 ```
 cd frontend
+copy env.example.js env.js
+```
+
+Edit `frontend/env.js` and set `window.API_BASE` to wherever the backend actually lives
+(`http://localhost:8000` for local dev, your real API URL in production). It's gitignored —
+each environment (your machine, a deployed host) keeps its own.
+
+Then serve it with any static server, e.g.:
+
+```
 python -m http.server 5500
 ```
 
-Then open `http://localhost:5500`. If you serve it from a different port, add that origin to
+Then open `http://localhost:5500`. If you serve it from a different origin, add that origin to
 `CORS_ORIGINS` in `backend/.env` and restart the backend.
 
 ## 4. Try it
