@@ -127,12 +127,13 @@
     <!-- Browse -->
     <div id="browse-view" class="view">
       <div class="card">
-        <h2>Businesses</h2>
-        <div id="business-list" class="list"></div>
-      </div>
-      <div class="card">
-        <h2 id="services-heading">Services</h2>
-        <div id="service-list" class="list"></div>
+        <div class="card-header">
+          <h2>Businesses</h2>
+          <label style="margin:0">Category
+            <select id="browse-category-filter"><option value="">All categories</option></select>
+          </label>
+        </div>
+        <div id="business-list" class="business-grid"></div>
       </div>
       <div class="card" id="reviews-card" style="display:none">
         <h2 id="reviews-heading">Reviews</h2>
@@ -147,7 +148,18 @@
         <div id="appointments-calendar"></div>
       </div>
       <div class="card">
-        <h2>My Appointments</h2>
+        <div class="card-header">
+          <h2>My Appointments</h2>
+          <label style="margin:0">Filter
+            <select id="appointments-filter">
+              <option value="all">All</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="pending">Pending</option>
+              <option value="completed_not_reviewed">Completed &amp; not reviewed</option>
+              <option value="completed_reviewed">Completed &amp; reviewed</option>
+            </select>
+          </label>
+        </div>
         <div id="appointment-list" class="list"></div>
       </div>
     </div>
@@ -265,6 +277,31 @@
       </div>
     </div>
   </section>
+
+  <!-- Booking modal (triggered from Browse Businesses) -->
+  <div id="booking-modal-overlay" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="booking-modal-title">Book an appointment</h3>
+        <button type="button" id="booking-modal-close" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Service
+          <select id="booking-modal-service"><option value="">Loading services...</option></select>
+        </label>
+        <label>Date
+          <input type="date" id="booking-modal-date">
+        </label>
+        <label>Available times
+          <select id="booking-modal-slot" disabled><option value="">Pick a service and date first</option></select>
+        </label>
+        <p class="form-error" id="booking-modal-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="booking-modal-confirm" class="btn btn-primary" disabled>Confirm booking</button>
+      </div>
+    </div>
+  </div>
 
 </main>
 

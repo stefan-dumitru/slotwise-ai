@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -84,6 +86,23 @@ def update_business(
 @router.get("/businesses/{business_id}/services", response_model=list[schemas.ServiceOut])
 def list_services(business_id: int, db: Session = Depends(get_db)):
     return db.query(models.Service).filter(models.Service.business_id == business_id, models.Service.is_active.is_(True)).all()
+
+
+@router.get("/businesses/{business_id}/services/{service_id}/slots", response_model=list[schemas.SlotOut])
+def list_service_slots(business_id: int, service_id: int, slot_date: date, db: Session = Depends(get_db)):
+    service = db.get(models.Service, service_id)
+    if not service or service.business_id != business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+    slots = crud.compute_available_slots(db, service, slot_date, slot_date, limit=50)
+    return [
+        {
+            "staff_id": s["staff_id"],
+            "staff_name": s["staff_name"],
+            "start_time": s["start_time"],
+            "end_time": s["end_time"],
+        }
+        for s in slots
+    ]
 
 
 @router.get("/businesses/{business_id}/reviews", response_model=list[schemas.ReviewOut])

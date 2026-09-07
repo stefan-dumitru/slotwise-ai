@@ -352,47 +352,135 @@ document.getElementById("picker-submit-btn").addEventListener("click", () => {
 
 // ---------- Browse ----------
 
-async function loadBusinesses() {
+const CATEGORY_VISUALS = {
+  "Salon": { emoji: "💇", gradient: "linear-gradient(135deg, #f7d9e3, #f3b6cc)" },
+  "Barbershop": { emoji: "💈", gradient: "linear-gradient(135deg, #cfe0f7, #a9c6ef)" },
+  "Spa & Massage": { emoji: "💆", gradient: "linear-gradient(135deg, #d8f3ea, #b3e6d3)" },
+  "Dental Care": { emoji: "🦷", gradient: "linear-gradient(135deg, #e3f0ff, #c3ddfb)" },
+  "Medical Clinic": { emoji: "🩺", gradient: "linear-gradient(135deg, #ffe3e3, #fbc3c3)" },
+  "Tutoring & Education": { emoji: "📚", gradient: "linear-gradient(135deg, #fff3d6, #fbe3a3)" },
+  "Fitness & Personal Training": { emoji: "🏋️", gradient: "linear-gradient(135deg, #e3e8ff, #c3ccfb)" },
+  "Automotive Repair": { emoji: "🔧", gradient: "linear-gradient(135deg, #e6e6e6, #c9c9c9)" },
+  "Home Cleaning": { emoji: "🧹", gradient: "linear-gradient(135deg, #d9f7f0, #b3ecdf)" },
+  "Veterinary Care": { emoji: "🐾", gradient: "linear-gradient(135deg, #fbe8d3, #f5cfa0)" },
+  "Beauty & Nails": { emoji: "💅", gradient: "linear-gradient(135deg, #fde3f0, #f8bfe0)" },
+  "Photography": { emoji: "📷", gradient: "linear-gradient(135deg, #e8e8f7, #c9c9ef)" },
+  "Legal & Financial Consulting": { emoji: "⚖️", gradient: "linear-gradient(135deg, #e3f2f7, #bfe3ee)" },
+};
+const DEFAULT_CATEGORY_VISUAL = { emoji: "🏢", gradient: "linear-gradient(135deg, #ececec, #d4d4d4)" };
+
+function getCategoryVisual(categoryName) {
+  return CATEGORY_VISUALS[categoryName] || DEFAULT_CATEGORY_VISUAL;
+}
+
+const browseState = { categories: [], categoryById: {} };
+
+async function loadCategoryFilter() {
+  if (browseState.categories.length > 0) return;
+  const select = document.getElementById("browse-category-filter");
+  try {
+    const categories = await api("/api/categories", { auth: false });
+    browseState.categories = categories;
+    categories.forEach((c) => {
+      browseState.categoryById[c.id] = c.name;
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    // non-critical — the "All categories" option still works
+  }
+}
+
+document.getElementById("browse-category-filter").addEventListener("change", (e) => {
+  loadBusinesses(e.target.value || null);
+});
+
+async function loadBusinesses(categoryId) {
   const container = document.getElementById("business-list");
   container.textContent = "Loading...";
   try {
-    const businesses = await api("/api/businesses", { auth: false });
+    await loadCategoryFilter();
+    const query = categoryId ? `?category_id=${categoryId}` : "";
+    const businesses = await api(`/api/businesses${query}`, { auth: false });
     container.innerHTML = "";
-    if (businesses.length === 0) container.textContent = "No businesses yet.";
+    if (businesses.length === 0) {
+      container.textContent = "No businesses in this category yet.";
+      return;
+    }
     businesses.forEach((b) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
-      item.innerHTML = `<div><strong>${b.name}</strong><div class="meta">${b.address || ""}</div></div>`;
-      const btn = document.createElement("button");
-      btn.className = "btn btn-ghost btn-sm";
-      btn.textContent = "View services";
-      btn.addEventListener("click", () => loadServices(b.id, b.name));
-      item.appendChild(btn);
-      container.appendChild(item);
+      const categoryName = browseState.categoryById[b.category_id] || "";
+      const visual = getCategoryVisual(categoryName);
+
+      const card = document.createElement("div");
+      card.className = "business-card";
+      card.innerHTML = `
+        <div class="business-card-image" style="background:${visual.gradient}">${visual.emoji}</div>
+        <div class="business-card-body">
+          <strong>${b.name}</strong>
+          <div class="business-card-rating" id="business-rating-${b.id}">Loading rating...</div>
+          <div class="meta">${categoryName ? categoryName + " &middot; " : ""}${b.address || ""}</div>
+          <div class="business-card-services" id="business-services-${b.id}">Loading services...</div>
+        </div>`;
+
+      const ratingEl = card.querySelector(`#business-rating-${b.id}`);
+      ratingEl.addEventListener("click", () => loadReviews(b.id, b.name));
+
+      const actions = document.createElement("div");
+      actions.className = "business-card-actions";
+
+      const bookBtn = document.createElement("button");
+      bookBtn.className = "btn btn-primary btn-sm";
+      bookBtn.textContent = "Make appointment";
+      bookBtn.addEventListener("click", () => openBookingModal(b));
+
+      actions.append(bookBtn);
+      card.querySelector(".business-card-body").appendChild(actions);
+      container.appendChild(card);
+
+      loadBusinessCardServices(b.id);
+      loadBusinessCardRating(b.id);
     });
   } catch (err) {
     container.textContent = err.message;
   }
 }
 
-async function loadServices(businessId, businessName) {
-  document.getElementById("services-heading").textContent = `Services — ${businessName}`;
-  const container = document.getElementById("service-list");
-  container.textContent = "Loading...";
+async function loadBusinessCardServices(businessId) {
+  const servicesEl = document.getElementById(`business-services-${businessId}`);
+  if (!servicesEl) return;
   try {
     const services = await api(`/api/businesses/${businessId}/services`, { auth: false });
-    container.innerHTML = "";
-    if (services.length === 0) container.textContent = "No services listed yet.";
-    services.forEach((s) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
-      item.innerHTML = `<div><strong>${s.name}</strong><div class="meta">${s.duration_minutes} min &middot; $${s.price}</div></div>`;
-      container.appendChild(item);
-    });
+    if (services.length === 0) {
+      servicesEl.textContent = "No services listed yet.";
+      return;
+    }
+    servicesEl.innerHTML = services
+      .map(
+        (s) =>
+          `<div class="business-service-row"><span>${s.name}</span><span>${s.duration_minutes} min &middot; $${s.price}</span></div>`
+      )
+      .join("");
   } catch (err) {
-    container.textContent = err.message;
+    servicesEl.textContent = "Could not load services.";
   }
-  loadReviews(businessId, businessName);
+}
+
+async function loadBusinessCardRating(businessId) {
+  const ratingEl = document.getElementById(`business-rating-${businessId}`);
+  if (!ratingEl) return;
+  try {
+    const reviews = await api(`/api/businesses/${businessId}/reviews`, { auth: false });
+    if (reviews.length === 0) {
+      ratingEl.textContent = "No reviews yet";
+      return;
+    }
+    const average = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    ratingEl.innerHTML = `★ ${average.toFixed(1)} <span class="meta">(${reviews.length} review${reviews.length === 1 ? "" : "s"})</span>`;
+  } catch (err) {
+    ratingEl.textContent = "";
+  }
 }
 
 async function loadReviews(businessId, businessName) {
@@ -423,62 +511,237 @@ async function loadReviews(businessId, businessName) {
   }
 }
 
+// ---------- Booking modal ----------
+
+const bookingModalState = { business: null, slots: [] };
+
+function openBookingModal(business) {
+  bookingModalState.business = business;
+  bookingModalState.slots = [];
+
+  document.getElementById("booking-modal-title").textContent = `Book at ${business.name}`;
+  const errorEl = document.getElementById("booking-modal-error");
+  errorEl.textContent = "";
+  errorEl.classList.remove("form-success");
+
+  const serviceSelect = document.getElementById("booking-modal-service");
+  const dateInput = document.getElementById("booking-modal-date");
+  const slotSelect = document.getElementById("booking-modal-slot");
+  const confirmBtn = document.getElementById("booking-modal-confirm");
+
+  serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+  dateInput.value = "";
+  dateInput.min = new Date().toISOString().slice(0, 10);
+  slotSelect.innerHTML = '<option value="">Pick a service and date first</option>';
+  slotSelect.disabled = true;
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = "Confirm booking";
+
+  document.getElementById("booking-modal-overlay").classList.remove("hidden");
+
+  api(`/api/businesses/${business.id}/services`, { auth: false })
+    .then((services) => {
+      serviceSelect.innerHTML = '<option value="">Choose a service...</option>';
+      services.forEach((s) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.name} (${s.duration_minutes} min, $${s.price})`;
+        serviceSelect.appendChild(opt);
+      });
+    })
+    .catch(() => {
+      serviceSelect.innerHTML = '<option value="">Could not load services</option>';
+    });
+}
+
+function closeBookingModal() {
+  document.getElementById("booking-modal-overlay").classList.add("hidden");
+  bookingModalState.business = null;
+  bookingModalState.slots = [];
+}
+
+document.getElementById("booking-modal-close").addEventListener("click", closeBookingModal);
+
+document.getElementById("booking-modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "booking-modal-overlay") closeBookingModal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !document.getElementById("booking-modal-overlay").classList.contains("hidden")) {
+    closeBookingModal();
+  }
+});
+
+async function refreshBookingSlots() {
+  const serviceId = document.getElementById("booking-modal-service").value;
+  const dateValue = document.getElementById("booking-modal-date").value;
+  const slotSelect = document.getElementById("booking-modal-slot");
+  const confirmBtn = document.getElementById("booking-modal-confirm");
+  const errorEl = document.getElementById("booking-modal-error");
+  errorEl.textContent = "";
+  confirmBtn.disabled = true;
+
+  if (!serviceId || !dateValue || !bookingModalState.business) {
+    slotSelect.innerHTML = '<option value="">Pick a service and date first</option>';
+    slotSelect.disabled = true;
+    return;
+  }
+
+  slotSelect.innerHTML = '<option value="">Loading available times...</option>';
+  slotSelect.disabled = true;
+
+  try {
+    const slots = await api(
+      `/api/businesses/${bookingModalState.business.id}/services/${serviceId}/slots?slot_date=${dateValue}`,
+      { auth: false }
+    );
+    bookingModalState.slots = slots;
+    if (slots.length === 0) {
+      slotSelect.innerHTML = '<option value="">No available times that day</option>';
+      slotSelect.disabled = true;
+      return;
+    }
+    slotSelect.innerHTML = '<option value="">Choose a time...</option>';
+    slots.forEach((slot, index) => {
+      const opt = document.createElement("option");
+      opt.value = index;
+      const time = new Date(slot.start_time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      opt.textContent = `${time} — with ${slot.staff_name}`;
+      slotSelect.appendChild(opt);
+    });
+    slotSelect.disabled = false;
+  } catch (err) {
+    slotSelect.innerHTML = '<option value="">Could not load times</option>';
+    errorEl.textContent = err.message;
+  }
+}
+
+document.getElementById("booking-modal-service").addEventListener("change", refreshBookingSlots);
+document.getElementById("booking-modal-date").addEventListener("change", refreshBookingSlots);
+
+document.getElementById("booking-modal-slot").addEventListener("change", (e) => {
+  document.getElementById("booking-modal-confirm").disabled = e.target.value === "";
+});
+
+document.getElementById("booking-modal-confirm").addEventListener("click", async () => {
+  const serviceId = document.getElementById("booking-modal-service").value;
+  const slotIndex = document.getElementById("booking-modal-slot").value;
+  const errorEl = document.getElementById("booking-modal-error");
+  if (!serviceId || slotIndex === "") return;
+  const slot = bookingModalState.slots[parseInt(slotIndex, 10)];
+  if (!slot) return;
+
+  const confirmBtn = document.getElementById("booking-modal-confirm");
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = "Booking...";
+  errorEl.textContent = "";
+  errorEl.classList.remove("form-success");
+
+  try {
+    await api("/api/appointments", {
+      method: "POST",
+      body: { service_id: parseInt(serviceId, 10), staff_id: slot.staff_id, start_time: slot.start_time },
+    });
+    errorEl.textContent = "✓ Appointment booked!";
+    errorEl.classList.add("form-success");
+    loadAppointments();
+    loadNotifications();
+    setTimeout(closeBookingModal, 1100);
+  } catch (err) {
+    errorEl.textContent = err.message;
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "Confirm booking";
+  }
+});
+
 // ---------- Appointments ----------
 
 const customerCalState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let customerAppointmentsCache = [];
+
+function matchesAppointmentFilter(a, filter) {
+  switch (filter) {
+    case "confirmed":
+      return a.status === "confirmed";
+    case "pending":
+      return a.status === "pending";
+    case "completed_not_reviewed":
+      return a.status === "completed" && !a.has_review;
+    case "completed_reviewed":
+      return a.status === "completed" && a.has_review;
+    default:
+      return true;
+  }
+}
+
+document.getElementById("appointments-filter").addEventListener("change", renderAppointmentList);
 
 async function loadAppointments() {
   const container = document.getElementById("appointment-list");
   container.textContent = "Loading...";
   try {
     const appointments = await api("/api/appointments/me");
+    customerAppointmentsCache = appointments;
     renderCalendar("appointments-calendar", appointments, customerCalState, (a) => `${a.service_name} @ ${a.business_name}`);
-    container.innerHTML = "";
-    if (appointments.length === 0) container.textContent = "No appointments yet.";
-    appointments.forEach((a) => {
-      const item = document.createElement("div");
-      item.className = "list-item";
-      const when = new Date(a.start_time).toLocaleString();
-      item.innerHTML = `<div><strong>${when}</strong><div class="meta">${a.service_name} at ${a.business_name} with ${a.staff_name}</div></div>`;
-
-      const actions = document.createElement("div");
-      actions.style.display = "flex";
-      actions.style.alignItems = "center";
-      actions.style.gap = ".5rem";
-
-      const badge = document.createElement("span");
-      badge.className = `status-badge status-${a.status}`;
-      badge.textContent = a.status.replace("_", " ");
-      actions.appendChild(badge);
-
-      if (a.status === "confirmed" || a.status === "pending") {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-ghost btn-sm";
-        btn.textContent = "Cancel";
-        btn.addEventListener("click", async () => {
-          await api(`/api/appointments/${a.id}/cancel`, { method: "POST" });
-          loadAppointments();
-        });
-        actions.appendChild(btn);
-      } else if (a.status === "completed" && !a.has_review) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-ghost btn-sm";
-        btn.textContent = "Leave a review";
-        btn.addEventListener("click", () => showReviewForm(item, a.id));
-        actions.appendChild(btn);
-      } else if (a.status === "completed" && a.has_review) {
-        const reviewed = document.createElement("span");
-        reviewed.className = "meta";
-        reviewed.textContent = "Reviewed";
-        actions.appendChild(reviewed);
-      }
-
-      item.appendChild(actions);
-      container.appendChild(item);
-    });
+    renderAppointmentList();
   } catch (err) {
     container.textContent = err.message;
   }
+}
+
+function renderAppointmentList() {
+  const container = document.getElementById("appointment-list");
+  const filter = document.getElementById("appointments-filter").value;
+  const appointments = customerAppointmentsCache.filter((a) => matchesAppointmentFilter(a, filter));
+
+  container.innerHTML = "";
+  if (appointments.length === 0) {
+    container.textContent =
+      customerAppointmentsCache.length === 0 ? "No appointments yet." : "No appointments match this filter.";
+    return;
+  }
+
+  appointments.forEach((a) => {
+    const item = document.createElement("div");
+    item.className = "list-item";
+    const when = new Date(a.start_time).toLocaleString();
+    item.innerHTML = `<div><strong>${when}</strong><div class="meta">${a.service_name} at ${a.business_name} with ${a.staff_name}</div></div>`;
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.alignItems = "center";
+    actions.style.gap = ".5rem";
+
+    const badge = document.createElement("span");
+    badge.className = `status-badge status-${a.status}`;
+    badge.textContent = a.status.replace("_", " ");
+    actions.appendChild(badge);
+
+    if (a.status === "confirmed" || a.status === "pending") {
+      const btn = document.createElement("button");
+      btn.className = "btn btn-ghost btn-sm";
+      btn.textContent = "Cancel";
+      btn.addEventListener("click", async () => {
+        await api(`/api/appointments/${a.id}/cancel`, { method: "POST" });
+        loadAppointments();
+      });
+      actions.appendChild(btn);
+    } else if (a.status === "completed" && !a.has_review) {
+      const btn = document.createElement("button");
+      btn.className = "btn btn-ghost btn-sm";
+      btn.textContent = "Leave a review";
+      btn.addEventListener("click", () => showReviewForm(item, a.id));
+      actions.appendChild(btn);
+    } else if (a.status === "completed" && a.has_review) {
+      const reviewed = document.createElement("span");
+      reviewed.className = "meta";
+      reviewed.textContent = "Reviewed";
+      actions.appendChild(reviewed);
+    }
+
+    item.appendChild(actions);
+    container.appendChild(item);
+  });
 }
 
 function showReviewForm(itemEl, appointmentId) {

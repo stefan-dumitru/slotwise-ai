@@ -97,6 +97,13 @@ class ServiceOut(BaseModel):
         from_attributes = True
 
 
+class SlotOut(BaseModel):
+    staff_id: int
+    staff_name: str
+    start_time: datetime
+    end_time: datetime
+
+
 class StaffCreate(BaseModel):
     full_name: str
 
