@@ -12,3 +12,5 @@ python-jose[cryptography]
 openai
 anthropic
 python-multipart
+pytest
+pytest-cov

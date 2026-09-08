@@ -3,4 +3,7 @@ backend/.env
 frontend/.env
 __pycache__/
 *.pyc
+.pytest_cache/
+.coverage
+htmlcov/
 .DS_Store
