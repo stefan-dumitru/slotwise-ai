@@ -54,6 +54,8 @@ class Business(Base):
     name = Column(String(150), nullable=False)
     description = Column(Text)
     address = Column(String(255))
+    latitude = Column(DECIMAL(9, 6))
+    longitude = Column(DECIMAL(9, 6))
     phone = Column(String(30))
     email = Column(String(150))
     status = Column(Enum("pending", "active", "suspended", name="business_status"), nullable=False, default="active")

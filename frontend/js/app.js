@@ -32,7 +32,9 @@ async function api(path, { method = "GET", body, form = false, auth = true } = {
   }
 
   const res = await fetch(`${API_BASE}${path}`, { method, headers, body: payload });
-  if (res.status === 401) {
+  if (res.status === 401 && auth && state.token) {
+    // Only treat this as an expired session if the request actually carried a
+    // token — a 401 on login/register itself just means wrong credentials.
     logout();
     throw new Error("Session expired, please log in again.");
   }
@@ -397,6 +399,55 @@ document.getElementById("browse-category-filter").addEventListener("change", (e)
   loadBusinesses(e.target.value || null);
 });
 
+let businessMap = null;
+let businessMarkers = [];
+const AUSTIN_CENTER = [30.2672, -97.7431];
+
+function ensureBusinessMap() {
+  if (businessMap) return businessMap;
+  businessMap = L.map("business-map").setView(AUSTIN_CENTER, 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(businessMap);
+  return businessMap;
+}
+
+function renderBusinessMap(businesses) {
+  const map = ensureBusinessMap();
+
+  businessMarkers.forEach((marker) => map.removeLayer(marker));
+  businessMarkers = [];
+
+  const withCoords = businesses.filter((b) => b.latitude != null && b.longitude != null);
+
+  withCoords.forEach((b) => {
+    const categoryName = browseState.categoryById[b.category_id] || "";
+    const marker = L.marker([b.latitude, b.longitude]);
+
+    const popupEl = document.createElement("div");
+    popupEl.className = "map-popup";
+    popupEl.innerHTML = `
+      <strong>${b.name}</strong>
+      <span class="meta">${categoryName ? categoryName + " &middot; " : ""}${b.address || ""}</span>`;
+    const bookBtn = document.createElement("button");
+    bookBtn.className = "btn btn-primary btn-sm";
+    bookBtn.textContent = "Make appointment";
+    bookBtn.addEventListener("click", () => openBookingModal(b));
+    popupEl.appendChild(bookBtn);
+
+    marker.bindPopup(popupEl);
+    marker.addTo(map);
+    businessMarkers.push(marker);
+  });
+
+  if (withCoords.length > 0) {
+    const bounds = L.latLngBounds(withCoords.map((b) => [b.latitude, b.longitude]));
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+  }
+  map.invalidateSize();
+}
+
 async function loadBusinesses(categoryId) {
   const container = document.getElementById("business-list");
   container.textContent = "Loading...";
@@ -404,6 +455,7 @@ async function loadBusinesses(categoryId) {
     await loadCategoryFilter();
     const query = categoryId ? `?category_id=${categoryId}` : "";
     const businesses = await api(`/api/businesses${query}`, { auth: false });
+    renderBusinessMap(businesses);
     container.innerHTML = "";
     if (businesses.length === 0) {
       container.textContent = "No businesses in this category yet.";

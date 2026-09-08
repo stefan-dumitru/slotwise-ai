@@ -70,7 +70,9 @@ h3 { margin: 0 0 .9rem; font-size: 1rem; font-weight: 700; }
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  /* Above Leaflet's panes/controls (~800) so the notification dropdown never
+     renders behind the map when both are visible on screen at once. */
+  z-index: 900;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -595,6 +597,20 @@ input:focus, select:focus {
   }
 }
 
+/* ---------- Map (Browse) ---------- */
+
+#business-map {
+  height: 320px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+
+.map-popup { font-family: var(--font-sans); display: flex; flex-direction: column; gap: .35rem; min-width: 160px; }
+.map-popup strong { font-size: .9rem; }
+.map-popup .meta { color: var(--muted); font-size: .78rem; }
+.map-popup .btn { margin-top: .2rem; }
+
 /* ---------- Business grid (Browse) ---------- */
 
 .business-grid {
@@ -670,7 +686,8 @@ input:focus, select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  /* Leaflet's own panes/controls go up to z-index ~800, so this has to clear that. */
+  z-index: 1000;
   padding: 1rem;
   animation: fade-in 150ms var(--ease);
 }

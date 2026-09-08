@@ -34,6 +34,8 @@ CREATE TABLE businesses (
     name         VARCHAR(150) NOT NULL,
     description  TEXT,
     address      VARCHAR(255),
+    latitude     DECIMAL(9,6),
+    longitude    DECIMAL(9,6),
     phone        VARCHAR(30),
     email        VARCHAR(150),
     status       ENUM('pending', 'active', 'suspended') NOT NULL DEFAULT 'active',

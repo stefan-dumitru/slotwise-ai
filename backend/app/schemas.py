@@ -69,6 +69,8 @@ class BusinessOut(BaseModel):
     category_id: Optional[int] = None
     description: Optional[str] = None
     address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     status: str

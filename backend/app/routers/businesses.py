@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from .. import crud, models, schemas
 from ..auth_utils import get_current_user, require_role
 from ..database import get_db
+from ..geocoding import geocode_address
 
 router = APIRouter(prefix="/api", tags=["businesses"])
 
@@ -50,6 +51,10 @@ def create_business(
     current_user: models.User = Depends(require_role("business_owner", "admin")),
 ):
     business = models.Business(owner_id=current_user.id, **payload.model_dump())
+    if business.address:
+        coords = geocode_address(business.address)
+        if coords:
+            business.latitude, business.longitude = coords
     db.add(business)
     db.flush()
 
@@ -80,7 +85,11 @@ def update_business(
     current_user: models.User = Depends(require_role("business_owner", "admin")),
 ):
     _get_owned_business(db, business_id, current_user)
-    return crud.update_business(db, business_id, payload.model_dump(exclude_unset=True))
+    updates = payload.model_dump(exclude_unset=True)
+    if "address" in updates:
+        coords = geocode_address(updates["address"]) if updates["address"] else None
+        updates["latitude"], updates["longitude"] = coords if coords else (None, None)
+    return crud.update_business(db, business_id, updates)
 
 
 @router.get("/businesses/{business_id}/services", response_model=list[schemas.ServiceOut])
