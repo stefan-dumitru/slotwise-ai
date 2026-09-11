@@ -110,17 +110,24 @@ def compute_available_slots(
     return slots
 
 
-def is_slot_free(db: Session, staff_id: int, start_time: datetime, end_time: datetime) -> bool:
-    conflict = (
-        db.query(models.Appointment)
-        .filter(
-            models.Appointment.staff_id == staff_id,
-            models.Appointment.status.in_(["pending", "confirmed"]),
-            models.Appointment.start_time < end_time,
-            models.Appointment.end_time > start_time,
-        )
-        .first()
+def is_slot_free(
+    db: Session, staff_id: int, start_time: datetime, end_time: datetime, for_update: bool = False
+) -> bool:
+    query = db.query(models.Appointment).filter(
+        models.Appointment.staff_id == staff_id,
+        models.Appointment.status.in_(["pending", "confirmed"]),
+        models.Appointment.start_time < end_time,
+        models.Appointment.end_time > start_time,
     )
+    if for_update:
+        # A plain SELECT here would use MySQL's REPEATABLE READ snapshot taken at
+        # the start of the transaction, so it could report "free" even after the
+        # staff-row lock above has serialized us behind another transaction that
+        # already committed a conflicting appointment. FOR UPDATE forces a locking
+        # read, which always sees the latest committed data instead of that stale
+        # snapshot.
+        query = query.with_for_update()
+    conflict = query.first()
     return conflict is None
 
 
@@ -143,14 +150,15 @@ def create_appointment(db: Session, customer_id: int, service_id: int, staff_id:
     service = db.get(models.Service, service_id)
     if not service:
         raise ValueError("Service not found")
-    staff = db.get(models.Staff, staff_id)
+    # Locks the staff row for the rest of this transaction, so a second concurrent
+    # booking attempt for the same staff member blocks here until the first one
+    # commits (or rolls back) instead of racing past the is_slot_free check below.
+    staff = db.get(models.Staff, staff_id, with_for_update=True)
     if not staff or staff.business_id != service.business_id:
         raise ValueError("Staff does not belong to this service's business")
 
     end_time = start_time + timedelta(minutes=service.duration_minutes)
-    # Best-effort check-then-insert; a production system would add row locking
-    # (SELECT ... FOR UPDATE) to fully close the race window under concurrent bookings.
-    if not is_slot_free(db, staff_id, start_time, end_time):
+    if not is_slot_free(db, staff_id, start_time, end_time, for_update=True):
         raise ValueError("That slot is no longer available")
 
     appointment = models.Appointment(
